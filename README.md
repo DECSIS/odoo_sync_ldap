@@ -1,7 +1,7 @@
 # Sync LDAP Odoo Module
 
 odoo_sync_ldap aims to sync LDAP information with Odoo.
-![Module Overview](/images/hr_ldap_sync.png?raw=true)
+![Module Overview](hr_ldap_sync/images/hr_ldap_sync.png?raw=true)
 
 
 ## Configuration
@@ -13,7 +13,7 @@ Before you use this module you must configure the Odoo LDAP Settings:
 - Tested with LDAP Filter = "(mail=%s)", Sequence = 10, Create User Enabled.
 
 In "List" menu create the LDAP mappings to the Odoo models like so:
-![Mapping Example](/images/mapping_example.png?raw=true)
+![Mapping Example](hr_ldap_sync/images/mapping_example.png?raw=true)
 
 Or import the "hr_ldap_sync.model_mapping.csv" file into Odoo and change it to suit your needs.
 
