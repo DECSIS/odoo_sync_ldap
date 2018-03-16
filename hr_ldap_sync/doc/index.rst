@@ -13,7 +13,9 @@ Before you use this module you must configure the Odoo LDAP Settings:
 
 In "List" menu create the LDAP mappings to the Odoo models like so:
 
-.. image:: https://raw.githubusercontent.com/DECSIS/odoo_sync_ldap/11.0/images/mapping_example.png
+.. image:: https://raw.githubusercontent.com/DECSIS/odoo_sync_ldap/11.0/hr_ldap_sync/images/mapping_example.png  
+
+ 
 
 Or import the "hr_ldap_sync.model_mapping.csv" file into Odoo and change it to suit your needs.
 
