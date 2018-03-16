@@ -1,0 +1,85 @@
+<odoo>
+  <data>
+    <!-- explicit list view definition -->
+    <!--
+    <record model="ir.ui.view" id="hr_ldap_sync.list">
+      <field name="name">hr_ldap_sync list</field>
+      <field name="model">hr_ldap_sync.hr_ldap_sync</field>
+      <field name="arch" type="xml">
+        <tree>
+          <field name="name"/>
+          <field name="value"/>
+          <field name="value2"/>
+        </tree>
+      </field>
+    </record>
+    -->
+
+    <!-- actions opening views on models -->
+
+    <record model="ir.actions.server" id="sync">
+        <field name="name">Sync LDAP data</field>
+        <field name="model_id" ref="model_hr_ldap_sync_model_mapping"/>
+        <field name="state">code</field>
+        <field name="code">
+        model.sync()
+        </field>
+    </record>
+
+    <record model="ir.actions.server" id="update_FK">
+        <field name="name">Sync LDAP data</field>
+        <field name="model_id" ref="model_hr_ldap_sync_model_mapping"/>
+        <field name="state">code</field>
+        <field name="code">
+        model.sync_FK('all')
+        </field>
+    </record>
+
+    <record model="ir.actions.server" id="update_FK_Users">
+        <field name="name">Sync LDAP data</field>
+        <field name="model_id" ref="model_hr_ldap_sync_model_mapping"/>
+        <field name="state">code</field>
+        <field name="code">
+        model.sync_FK('users')
+        </field>
+    </record>
+
+
+    <record model="ir.actions.server" id="update_FK_company">
+        <field name="name">Sync LDAP data</field>
+        <field name="model_id" ref="model_hr_ldap_sync_model_mapping"/>
+        <field name="state">code</field>
+        <field name="code">
+        model.sync_FK('company')
+        </field>
+    </record>
+
+    <record model="ir.actions.act_window" id="hr_ldap_sync_action_window">
+      <field name="name">hr_ldap_sync window</field>
+      <field name="res_model">hr_ldap_sync.model_mapping</field>
+      <field name="view_mode">tree,form</field>
+    </record>    
+
+    <!-- Top menu item -->
+    
+    <menuitem name="hr_ldap_sync" id="hr_ldap_sync_menu_root"/>
+    
+    <!-- menu categories -->
+    
+    <menuitem name="Menu" id="hr_ldap_sync_menu_1" parent="hr_ldap_sync_menu_root"/>
+    
+    
+    <!-- actions -->
+    
+    <menuitem name="List" id="hr_ldap_sync_menu_1_list" parent="hr_ldap_sync_menu_1"
+              action="hr_ldap_sync_action_window"/>    
+    <menuitem name="Sync" id="hr_ldap_sync_menu_1_sync" parent="hr_ldap_sync_menu_1"
+              action="sync"/>
+    <menuitem name="Update_FK" id="hr_ldap_sync_menu_2_sync" parent="hr_ldap_sync_menu_1"
+              action="update_FK"/>
+    <menuitem name="Update_FK Users" id="hr_ldap_sync_menu_3_sync" parent="hr_ldap_sync_menu_1"
+              action="update_FK_Users"/>
+    <menuitem name="Update_FK Company" id="hr_ldap_sync_menu_4_sync" parent="hr_ldap_sync_menu_1"
+              action="update_FK_company"/>
+  </data>
+</odoo>
