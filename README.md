@@ -17,15 +17,22 @@ In "List" menu create the LDAP mappings to the Odoo models like so:
 
 Or import the "hr_ldap_sync.model_mapping.csv" file into Odoo and change it to suit your needs.
 
+You must set the priorities for the models and for the foreign keys. If model X
+depends on model Y, then model X should have higher priorities. The "model
+priorities" use the priority of the first mapping of that model found on the
+list.
+
+For Foreign Keys higher priority also means it is executed first. For example
+"company_ids" should be assigned before "company_id" to user foreign key, then
+"company_ids" must have higher priority than "company_id". This priority is in
+relation to the foreign keys in the same model.
+
 ## Usage
 
 You should follow these guidelines:
 
-- First use the "Sync" option to synchronize the mappings with the LDAP. (delete part of sync is commented, uncoment if needed)
-- Then Update the Foreign Keys for Company, Jobs and Departments by choosing the "Update_FK Company". (if applicable on your mappings)
-- Update the Users Foreign Keys by choosing the "Update_FK Users". (if applicable on your mappings)
-- Update the Foreign Keys for the remaining mappings with the "Update_FK" option.
+- First use the "Sync" option to synchronize the mappings with the LDAP. (delete is commented, uncoment if needed)
+- Use the "Update_FK" option to update the foreign keys. 
 
-Sometimes the foreign keys will fail due to missing dependencies. Restart the server and try again to refresh the database.
-
-Updating Foreign Keys takes quite some time, if no messages are appearing on logs then execution is running normally.
+Updating Foreign Keys takes quite some time, if no error messages are appearing on
+logs then execution is running normally.
