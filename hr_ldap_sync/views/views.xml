@@ -26,31 +26,12 @@
         </field>
     </record>
 
-    <record model="ir.actions.server" id="update_FK">
+    <record model="ir.actions.server" id="update_FK_group">
         <field name="name">Sync LDAP data</field>
         <field name="model_id" ref="model_hr_ldap_sync_model_mapping"/>
         <field name="state">code</field>
         <field name="code">
-        model.sync_FK('all')
-        </field>
-    </record>
-
-    <record model="ir.actions.server" id="update_FK_Users">
-        <field name="name">Sync LDAP data</field>
-        <field name="model_id" ref="model_hr_ldap_sync_model_mapping"/>
-        <field name="state">code</field>
-        <field name="code">
-        model.sync_FK('users')
-        </field>
-    </record>
-
-
-    <record model="ir.actions.server" id="update_FK_company">
-        <field name="name">Sync LDAP data</field>
-        <field name="model_id" ref="model_hr_ldap_sync_model_mapping"/>
-        <field name="state">code</field>
-        <field name="code">
-        model.sync_FK('company')
+        model.sync_FK()
         </field>
     </record>
 
@@ -76,10 +57,6 @@
     <menuitem name="Sync" id="hr_ldap_sync_menu_1_sync" parent="hr_ldap_sync_menu_1"
               action="sync"/>
     <menuitem name="Update_FK" id="hr_ldap_sync_menu_2_sync" parent="hr_ldap_sync_menu_1"
-              action="update_FK"/>
-    <menuitem name="Update_FK Users" id="hr_ldap_sync_menu_3_sync" parent="hr_ldap_sync_menu_1"
-              action="update_FK_Users"/>
-    <menuitem name="Update_FK Company" id="hr_ldap_sync_menu_4_sync" parent="hr_ldap_sync_menu_1"
-              action="update_FK_company"/>
+              action="update_FK_group"/>
   </data>
 </odoo>

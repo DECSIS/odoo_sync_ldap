@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import collections
 
 from odoo import models, fields, api, tools
 import logging, sys, base64
@@ -10,7 +11,7 @@ class TransientModelMapping:
 
     def __init__(self):
         self.attributes = {}
-        self.foreign_keys = {}
+        self.foreign_keys = collections.OrderedDict()
         self.id_in_odoo = None
         self.model_instance = None
 
@@ -21,6 +22,12 @@ class TransientModelMapping:
         if not self.id_in_odoo:
             raise ValueError('Model {} dont define an identifier field'.format(self.model_instance))
 
+    # Sort the foreign keys by priority,
+    # priority is in the value part of tuple (1) and is the third element of value (4)
+    def sort_foreign_keys(self):
+        if len(self.foreign_keys) != 0:
+            self.foreign_keys = collections.OrderedDict(sorted((self.foreign_keys).items(), key=lambda t: t[1][4], reverse=True))
+
 class EmployeeLDAP(models.Model):
     _inherit = 'hr.employee'
 
@@ -28,15 +35,19 @@ class EmployeeLDAP(models.Model):
 
 class ModelMapping(models.Model):
     _name = "hr_ldap_sync.model_mapping"
-
     name = fields.Char(compute='_compute_name')
+
     model = fields.Char(required=True)
+    model_priority = fields.Integer(string="Model Priority", help="Higher values are given more importance and executed first.", required=False)
+
     attribute = fields.Char(required=True)
     ldap_attribute = fields.Char(required=True)
     is_unique_identifier = fields.Boolean(string='Is unique identifier?',required=True, default=False)
+
     foreign_key_of = fields.Char(string='Foreign key of model',required=False)
     foreign_key_field = fields.Char(string='Foreign key field on dst model',required=False)
     foreign_key_type = fields.Selection(string='FK Relation Type',selection=[('One2*','One2*'),('Many2*','Many2*')])
+    foreign_key_priority = fields.Integer(string="Foreign Key Priority", help="Higher values are given more importance and executed first.", required=False)
 
 
     @api.multi
@@ -119,9 +130,6 @@ class ModelMapping(models.Model):
         except:
             _logger.error('Error sync {}!##################'.format(traceback.format_exc()))
 
-        # update FK
-        # self.update_fk(records_to_update_fk, mapping)
-
         _logger.info('###############Sync finished!##################')
 
     def update_fk(self, records_to_update, mapping):
@@ -133,28 +141,7 @@ class ModelMapping(models.Model):
         except:
             _logger.error('Error sync {}!##################'.format(traceback.format_exc()))
 
-    def update_fk_users(self, records_to_update, mapping):
-        try:
-            for model in mapping:
-                if model == 'res.users':
-                    _logger.info('###############Update FK {}!##################'.format(model))
-                    for new_record in records_to_update[model]:
-                        self.apply_fks_to_record(new_record['odoo'], new_record['ldap'], mapping[model])
-        except:
-            _logger.error('Error sync {}!##################'.format(traceback.format_exc()))
-
-
-    def update_fk_company(self, records_to_update, mapping):
-        try:
-            for model in mapping:
-                if model in ['res.company', 'hr.job', 'hr.department']:
-                    _logger.info('###############Update FK {}!##################'.format(model))
-                    for new_record in records_to_update[model]:
-                        self.apply_fks_to_record(new_record['odoo'], new_record['ldap'], mapping[model])
-        except:
-            _logger.error('Error sync {}!##################'.format(traceback.format_exc()))
-
-    def add_record(self,record_in_ldap,mapping):
+    def add_record(self, record_in_ldap, mapping):
         new_record = {}
         for attr_odoo,attr_ldap in mapping.attributes.items():
             if attr_ldap in record_in_ldap:
@@ -170,6 +157,7 @@ class ModelMapping(models.Model):
 
         _logger.info('Adding new {} {}'.format(mapping.model_instance,new_record))
         mapping.model_instance.create(new_record)
+
         return new_record
 
     def get_fk(self,fk_model_instance,fk_identifier_field,fk_value_in_ldap):
@@ -178,21 +166,25 @@ class ModelMapping(models.Model):
             return result_fk.id
         return None
 
-    def update_manager_permissions(self, manager):
+    def update_manager_permissions(self):
         # Manager Group Search
-        manager_group = self.env.ref('job_plans.manager_group')
-        # templateManager_group = self.env.ref('job_plans.job_template_manager')
+        try:
+            manager_group = self.env.ref('job_plans.manager_group')
 
-        # if (manager.has_group('job_plans.job_template_manager')):
-        #     templateManager_group.write({'users': [(3, manager.id)]})
-        #     _logger.info('###############Write Template Manager##################')
+            # templateManager_group = self.env.ref('job_plans.job_template_manager')
+            for employee in self.env['hr.employee'].search([]):
 
-        if (not manager.has_group('job_plans.manager_group')):
-            manager_group.write({'users': [(4, manager.id)]})
-            # _logger.info('###############Write Manager##################')
+                if employee.child_ids:
+                    user_manager = employee.user_id
+
+                    if (not user_manager.has_group('job_plans.manager_group')):
+                        manager_group.write({'users': [(4, user_manager.id)]})
+                        #_logger.info('###############Write Manager##################')
+        except:
+            _logger.info('###############Found no Group Manager##################')
 
     def apply_fks_to_record(self,record_to_apply,record_in_ldap,mapping):
-        for model_field,(fk_ldap_field,fk_model_instance,fk_identifier_field,foreign_key_type) in mapping.foreign_keys.items():
+        for model_field,(fk_ldap_field,fk_model_instance,fk_identifier_field,foreign_key_type, foreign_key_priority) in mapping.foreign_keys.items():
             if record_in_ldap.get(fk_ldap_field):
                 fk_value_in_ldap = tools.ustr(record_in_ldap.get(fk_ldap_field)[0])
                 result_fk = self.get_fk(fk_model_instance,fk_identifier_field,fk_value_in_ldap)
@@ -208,26 +200,10 @@ class ModelMapping(models.Model):
                             if foreign_key_type == 'One2*':
                                 record_to_apply[model_field] = result_fk
 
-                                if fk_ldap_field == 'manager':
-                                    manager = record_to_apply['parent_id'].user_id
-
-                                    if manager:
-                                        self.update_manager_permissions(manager)
-                                    else:
-                                        _logger('###############Failed due to no manager##################')
-
                                 # if 'name' in record_to_apply:
                                 #     _logger.info('###############Update {} {} inside One2* FK {} ({}={})!##################'.format(mapping.model_instance,record_to_apply.name,fk_model_instance,fk_identifier_field,fk_value_in_ldap))
                             elif foreign_key_type == 'Many2*':
                                 record_to_apply[model_field] = [result_fk]
-
-                                if fk_ldap_field == 'manager':
-                                    manager = record_to_apply['parent_id'].user_id
-
-                                    if manager:
-                                        self.update_manager_permissions(manager)
-                                    else:
-                                        _logger('###############Failed due to no manager##################')
 
                                 # if 'name' in record_to_apply:
                                 #     _logger.info('###############Update {} {} inside FK Many2* {} ({}={})!##################'.format(mapping.model_instance,record_to_apply.name,fk_model_instance,fk_identifier_field,fk_value_in_ldap))
@@ -257,26 +233,47 @@ class ModelMapping(models.Model):
 
 
     def generate_mapping(self):
-        mapping = {}
+        mapping = collections.OrderedDict()
+        model_priority = {}
+
         for record in self.search([]):
             if record.model not in mapping:
                 mapping[record.model] = TransientModelMapping()
                 mapping[record.model].model_instance = self.env[record.model]
+                model_priority[record.model] = record.model_priority
+
             if record.is_unique_identifier:
                 mapping[record.model].id_in_odoo = record.attribute
+
             if record.foreign_key_of:
-                mapping[record.model].foreign_keys[record.attribute] = (record.ldap_attribute,self.env[record.foreign_key_of],record.foreign_key_field,record.foreign_key_type)
+                mapping[record.model].foreign_keys[record.attribute] = (record.ldap_attribute,self.env[record.foreign_key_of],record.foreign_key_field,record.foreign_key_type, record.foreign_key_priority)
+
             else:
                 mapping[record.model].attributes[record.attribute] = record.ldap_attribute
+
+        # Validate and sort mapping based on priority
         self.validate_mapping(mapping)
-        return mapping
+        self.sort_foreign_keys(mapping)
+        ret = self.sort_models(mapping, model_priority)
+
+        return ret
 
     def validate_mapping(self,mapping):
         for model_name,model_mapping in mapping.items():
             model_mapping.validate()
 
+    def sort_foreign_keys(self, mapping):
+        for model_name,model_mapping in mapping.items():
+            model_mapping.sort_foreign_keys()
+
+    def sort_models(self, mapping, model_priority):
+        mapping = collections.OrderedDict(sorted(mapping.items(), key=lambda t: model_priority[(t[0])], reverse=True))
+
+        return mapping
+
+
     @api.model
-    def sync_FK(self, option):
+    def sync_FK(self):
         Ldap = self.env['res.company.ldap']
 
         companies_ldap = {}
@@ -343,19 +340,14 @@ class ModelMapping(models.Model):
 
                     self.update_record(record_ldap, record_odoo, mapping[model])
                     records_to_update_fk[model].append({'odoo': record_odoo, 'ldap': record_ldap})
-                # for record_id_to_update in records_to_delete:
-                #    map_records_odoo[record_id_to_update].active = False
 
                 _logger.info('###############Sync finished {}!##################'.format(model))
         except:
             _logger.error('Error sync {}!##################'.format(traceback.format_exc()))
 
-        # update FK
-        if option=='users':
-            self.update_fk_users(records_to_update_fk, mapping)
-        elif option=='company':
-            self.update_fk_company(records_to_update_fk, mapping)
-        else:
-            self.update_fk(records_to_update_fk, mapping)
+        self.update_fk(records_to_update_fk, mapping)
+
+        # Give manager permission if needed
+        self.update_manager_permissions()
 
         _logger.info('###############Sync finished!##################')
